@@ -1,0 +1,9 @@
+.card img {
+    height: 450px;
+    object-fit: contain;
+}
+
+.form-control {
+    height: 150px;
+    resize: none;
+}
