@@ -5,8 +5,9 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { useSelector, useDispatch } from "react-redux";
 import "./App.css";
-import { selectReviews } from "./redux/selectors";
 import { addReviews } from "./redux/reviewsSlice";
+import { selectReviews } from "./redux/selectors";
+import { deleteReview } from "./redux/reviewsSlice";
 
 function App() {
   // API
@@ -24,7 +25,7 @@ function App() {
     comment: yup
       .string()
       .required("Le commentaire est obligatoire")
-      .max(500, "Le comentaire excéde la limite de 500 charactères"),
+      .max(500, "Le commentaire excéde la limite de 500 caractères"),
     note: yup
       .string()
       .required("La note est obligatoire")
@@ -48,17 +49,16 @@ function App() {
 
   const onSubmit = (data) => {
     console.log(data);
+    dispatch(
+      addReviews({
+        text: data.comment,
+        note: data.note,
+      })
+    );
   };
-  // Redux
-  const [review, setReview] = useState("");
+  // Redux / IMMER
   const dispatch = useDispatch();
   const reviews = useSelector(selectReviews);
-  const completedReviews = useSelector(selectCompletedReviews);
-
-  const handleAddReview = () => {
-    dispatch(addReviews(review));
-    setReview("");
-  };
 
   return (
     movie && (
@@ -92,7 +92,6 @@ function App() {
                   <Form.Control
                     as="textarea"
                     rows={3}
-                    onChange={(e) => setReview(e.target.value)}
                     {...register("comment")}
                   />
                   <p>{errors.comment?.message}</p>
@@ -113,15 +112,40 @@ function App() {
                   <Form.Check
                     type="checkbox"
                     label="J'accepte les conditions générales"
-                    onChange={(e) => setReview(e.target.value)}
                     {...register("acceptConditions")}
                   />
                   <p>{errors.acceptConditions?.message}</p>
                 </Form.Group>
-                <Button type="submit" onClick={handleAddReview}>
-                  Ajouter
-                </Button>
+                <Button type="submit">Ajouter</Button>
               </Form>
+              {reviews.length === 0 && (
+                <Card.Text className="bg-info text-primary bg-opacity-25 rounded-sm mt-2 pl-50">
+                  Aucun commentaire pour le moment.
+                </Card.Text>
+              )}
+              {reviews.map((review) => (
+                <Card className="mb-3 mt-4" key={review.id}>
+                  <Row>
+                    <Card.Body className="d-flex flex-column justify-content-between">
+                      <Col>
+                        <Card.Text>
+                          <strong>Note :</strong> {review.note}/5
+                        </Card.Text>
+                        <Card.Text>{review.text}</Card.Text>
+                      </Col>
+                      <Col className="d-flex justify-content-end">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => dispatch(deleteReview(review.id))}
+                        >
+                          Supprimer
+                        </Button>
+                      </Col>
+                    </Card.Body>
+                  </Row>
+                </Card>
+              ))}
             </Col>
           </Row>
         </Container>
