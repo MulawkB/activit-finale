@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { Container, Row, Col, Card, Form, Button } from "react-bootstrap";
+import {
+  Container,
+  Row,
+  Col,
+  Card,
+  Form,
+  Button,
+  Alert,
+} from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -12,14 +20,13 @@ import { deleteReview } from "./redux/reviewsSlice";
 function App() {
   // API
   const [movie, setMovie] = useState(null);
-  useEffect(() => {
-    async function fetchMovie() {
-      const response = await fetch("https://jsonfakery.com/movies/random/");
-      const data = await response.json();
-      setMovie(data);
-    }
-    fetchMovie();
-  }, []);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // Redux / IMMER
+  const dispatch = useDispatch();
+  const reviews = useSelector(selectReviews);
+
   // Formulaire
   const schema = yup.object().shape({
     comment: yup
@@ -38,6 +45,7 @@ function App() {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
   } = useForm({
     defaultValues: {
       comment: "",
@@ -55,17 +63,41 @@ function App() {
         note: data.note,
       })
     );
+    reset();
   };
-  // Redux / IMMER
-  const dispatch = useDispatch();
-  const reviews = useSelector(selectReviews);
+
+  // API
+  useEffect(() => {
+    async function fetchMovie() {
+      try {
+        const response = await fetch("https://jsonfakery.com/movies/random/");
+        if (!response.ok) {
+          throw new Error(
+            `Erreur HTTP: ${
+              response.statusText ? response.statusText + " - " : ""
+            }${response.status}`
+          );
+        }
+        const data = await response.json();
+        setMovie(data);
+      } catch (err) {
+        setError(err.message);
+        console.error(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMovie();
+  }, []);
+  if (error) return <p>Erreur : {error}</p>;
+  if (loading) return <p>Chargement...</p>;
 
   return (
     movie && (
       <>
         <Container className="my-5">
-          <Row className="w-50">
-            <Col key={movie.movie_id}>
+          <Row className="justify-content-center">
+            <Col md={6} key={movie.movie_id}>
               <Card>
                 <Card.Img
                   src={movie.poster_path}
@@ -75,7 +107,10 @@ function App() {
                   <Card.Title>
                     <strong>{movie.original_title} </strong>
                   </Card.Title>
-                  <Card.Text>Sortie : {movie.release_date}</Card.Text>
+                  <Card.Text>
+                    Sortie :{" "}
+                    {new Date(movie.release_date).toLocaleDateString("fr-FR")}
+                  </Card.Text>
                   <Card.Text>{movie.overview}</Card.Text>
                   <Card.Text>
                     Note moyenne : {movie.vote_average} ({movie.vote_count}{" "}
@@ -84,56 +119,64 @@ function App() {
                 </Card.Body>
               </Card>
               <Form onSubmit={handleSubmit(onSubmit)}>
-                <Form.Label>
-                  <strong> Commentaires </strong>
+                <Form.Label className="mt-4">
+                  <h2>Commentaires</h2>
                 </Form.Label>
                 <Form.Group controlId="Comment">
-                  <Form.Label>ajouter un commentaire</Form.Label>
+                  <Form.Label>Ajouter un commentaire</Form.Label>
                   <Form.Control
                     as="textarea"
                     rows={3}
                     {...register("comment")}
+                    isInvalid={!!errors.comment}
                   />
-                  <p>{errors.comment?.message}</p>
+                  <p className="error-message">{errors.comment?.message}</p>
                 </Form.Group>
-                <Form.Group controlId="Note">
+                <Form.Group className="mt-3" controlId="Note">
                   <Form.Label>Note</Form.Label>
-                  <Form.Select {...register("note")}>
+                  <Form.Select {...register("note")} 
+                  isInvalid={!!errors.note}>
                     <option value="">Sélectionnez une note</option>
-                    <option value="1">1</option>
-                    <option value="2">2</option>
-                    <option value="3">3</option>
-                    <option value="4">4</option>
-                    <option value="5">5</option>
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {i + 1}
+                      </option>
+                    ))}
                   </Form.Select>
-                  <p>{errors.note?.message}</p>
+                  <p className="error-message">{errors.note?.message} </p>
                 </Form.Group>
-                <Form.Group controlId="AcceptConditions">
+                <Form.Group className="mt-3" controlId="AcceptConditions">
                   <Form.Check
+                    isInvalid={!!errors.comment}
                     type="checkbox"
                     label="J'accepte les conditions générales"
                     {...register("acceptConditions")}
                   />
-                  <p>{errors.acceptConditions?.message}</p>
+                  <p className="error-message">
+                    {errors.acceptConditions?.message}
+                  </p>
                 </Form.Group>
-                <Button type="submit">Ajouter</Button>
+                <Button className="mt-3" type="submit">
+                  Ajouter
+                </Button>
               </Form>
               {reviews.length === 0 && (
-                <Card.Text className="bg-info text-primary bg-opacity-25 rounded-sm mt-2 pl-50">
+                <Alert className="bg-info text-primary bg-opacity-25 rounded-sm mt-3 ">
                   Aucun commentaire pour le moment.
-                </Card.Text>
+                </Alert>
               )}
               {reviews.map((review) => (
-                <Card className="mb-3 mt-4" key={review.id}>
+                <Card className="mb-3 mt-4">
                   <Row>
                     <Card.Body className="d-flex flex-column justify-content-between">
-                      <Col>
+                      <Col className="ms-3">
                         <Card.Text>
-                          <strong>Note :</strong> {review.note}/5
+                          <strong>Note : {review.note}/5</strong>
+                          <br></br>
+                          {review.text}
                         </Card.Text>
-                        <Card.Text>{review.text}</Card.Text>
                       </Col>
-                      <Col className="d-flex justify-content-end">
+                      <Col className="d-flex justify-content-end me-3">
                         <Button
                           variant="danger"
                           size="sm"
