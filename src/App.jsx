@@ -11,11 +11,7 @@ import {
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { useSelector, useDispatch } from "react-redux";
 import "./App.css";
-import { addReviews } from "./redux/reviewsSlice";
-import { selectReviews } from "./redux/selectors";
-import { deleteReview } from "./redux/reviewsSlice";
 
 function App() {
   // API
@@ -23,9 +19,8 @@ function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Redux / IMMER
-  const dispatch = useDispatch();
-  const reviews = useSelector(selectReviews);
+  // pour les commentaires 
+  const [reviews, setReviews] = useState([]);
 
   // Formulaire
   const schema = yup.object().shape({
@@ -57,12 +52,12 @@ function App() {
 
   const onSubmit = (data) => {
     console.log(data);
-    dispatch(
-      addReviews({
-        text: data.comment,
-        note: data.note,
-      })
-    );
+    const newReview = {
+      id: Date.now(),
+      text: data.comment,
+      note: data.note,
+    };
+    setReviews((prev) => [...prev, newReview]);
     reset();
   };
 
@@ -81,8 +76,12 @@ function App() {
         const data = await response.json();
         setMovie(data);
       } catch (err) {
-        setError(err.message);
+        setError(
+          "Nous ne pouvons pas accéder a votre requete due a une erreur interne. ",
+          err.message
+        );
         console.error(err.message);
+        alert("Une erreur est survenue lors de la récupération du film.");
       } finally {
         setLoading(false);
       }
@@ -97,7 +96,7 @@ function App() {
       <>
         <Container className="my-5">
           <Row className="justify-content-center">
-            <Col md={6} key={movie.movie_id}>
+            <Col md={6}>
               <Card>
                 <Card.Img
                   src={movie.poster_path}
@@ -130,12 +129,13 @@ function App() {
                     {...register("comment")}
                     isInvalid={!!errors.comment}
                   />
-                  <p className="error-message">{errors.comment?.message}</p>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.comment?.message}
+                  </Form.Control.Feedback>
                 </Form.Group>
                 <Form.Group className="mt-3" controlId="Note">
                   <Form.Label>Note</Form.Label>
-                  <Form.Select {...register("note")} 
-                  isInvalid={!!errors.note}>
+                  <Form.Select {...register("note")} isInvalid={!!errors.note}>
                     <option value="">Sélectionnez une note</option>
                     {Array.from({ length: 5 }, (_, i) => (
                       <option key={i + 1} value={i + 1}>
@@ -143,25 +143,26 @@ function App() {
                       </option>
                     ))}
                   </Form.Select>
-                  <p className="error-message">{errors.note?.message} </p>
+                  <Form.Control.Feedback type="invalid">
+                    {errors.note?.message}{" "}
+                  </Form.Control.Feedback>
                 </Form.Group>
                 <Form.Group className="mt-3" controlId="AcceptConditions">
                   <Form.Check
-                    isInvalid={!!errors.comment}
+                    isInvalid={!!errors.acceptConditions}
                     type="checkbox"
                     label="J'accepte les conditions générales"
                     {...register("acceptConditions")}
+                    feedback={errors.acceptConditions?.message}
+                    feedbackType="invalid"
                   />
-                  <p className="error-message">
-                    {errors.acceptConditions?.message}
-                  </p>
                 </Form.Group>
                 <Button className="mt-3" type="submit">
                   Ajouter
                 </Button>
               </Form>
               {reviews.length === 0 && (
-                <Alert className="bg-info text-primary bg-opacity-25 rounded-sm mt-3 ">
+                <Alert variant="info" className="mt-4 ">
                   Aucun commentaire pour le moment.
                 </Alert>
               )}
@@ -180,7 +181,11 @@ function App() {
                         <Button
                           variant="danger"
                           size="sm"
-                          onClick={() => dispatch(deleteReview(review.id))}
+                          onClick={() =>
+                            setReviews((prev) =>
+                              prev.filter((r) => r.id !== review.id)
+                            )
+                          }
                         >
                           Supprimer
                         </Button>
