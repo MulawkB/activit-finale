@@ -10,6 +10,8 @@ import {
 } from "react-bootstrap";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
+import { useDispatch, useSelector } from "react-redux";
+import { addReviews, deleteReview } from "./redux/reviewsSlice";
 import * as yup from "yup";
 import "./App.css";
 
@@ -19,9 +21,9 @@ function App() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // pour les commentaires 
-  const [reviews, setReviews] = useState([]);
-
+  // pour les commentaires
+  const reviews = useSelector((state) => state.reviews);
+  const dispatch = useDispatch();
   // Formulaire
   const schema = yup.object().shape({
     comment: yup
@@ -53,11 +55,10 @@ function App() {
   const onSubmit = (data) => {
     console.log(data);
     const newReview = {
-      id: Date.now(),
       text: data.comment,
       note: data.note,
     };
-    setReviews((prev) => [...prev, newReview]);
+    dispatch(addReviews(newReview));
     reset();
   };
 
@@ -81,7 +82,7 @@ function App() {
           err.message
         );
         console.error(err.message);
-        alert("Une erreur est survenue lors de la récupération du film.");
+        "Une erreur est survenue lors de la récupération du film."
       } finally {
         setLoading(false);
       }
@@ -181,11 +182,7 @@ function App() {
                         <Button
                           variant="danger"
                           size="sm"
-                          onClick={() =>
-                            setReviews((prev) =>
-                              prev.filter((r) => r.id !== review.id)
-                            )
-                          }
+                          onClick={() => dispatch(deleteReview(review.id))}
                         >
                           Supprimer
                         </Button>
